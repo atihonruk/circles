@@ -1,0 +1,9 @@
+syntax: glob
+
+*~
+bin
+gen
+out
+local.properties
+.idea
+*.iml
