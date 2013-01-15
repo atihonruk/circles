@@ -20,26 +20,9 @@ public class CirclesView extends View {
             MAX_RADIUS = 50,
             MIN_RADIUS = 3;
 
-    private static Paint circleBg, circleStroke,
-                    selected, status;
+    private Paint circleBg, circleStroke,
+                    selectedStroke, status;
 
-    static {
-        circleBg = new Paint(Paint.ANTI_ALIAS_FLAG);
-        circleBg.setColor(Color.WHITE);
-        circleBg.setStyle(Paint.Style.FILL);
-
-        circleStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
-        circleStroke.setStyle(Paint.Style.STROKE);
-        circleStroke.setStrokeWidth(0);
-        circleStroke.setColor(Color.BLACK);
-
-        selected = new Paint(Paint.ANTI_ALIAS_FLAG);
-        selected.setStyle(Paint.Style.STROKE);
-        selected.setStrokeWidth(6.0f);
-        selected.setColor(Color.RED);
-
-        status = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-    }
 
     private int width, height;
     private ArrayList<Circle> circles;
@@ -49,6 +32,21 @@ public class CirclesView extends View {
 
     public CirclesView(Context context) {
         super(context);
+
+        circleBg = new Paint(Paint.ANTI_ALIAS_FLAG);
+        circleBg.setColor(Color.WHITE);
+        circleBg.setStyle(Paint.Style.FILL);
+
+        circleStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+        circleStroke.setStyle(Paint.Style.STROKE);
+        circleStroke.setStrokeWidth(0);
+        circleStroke.setColor(Color.BLACK);
+
+        selectedStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+        selectedStroke.setStyle(Paint.Style.STROKE);
+        selectedStroke.setStrokeWidth(6.0f);
+
+        status = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     }
 
     @Override
@@ -102,7 +100,7 @@ public class CirclesView extends View {
         return true;
     }
 
-    static class Circle extends Shape {
+    class Circle {
         private final int centerX, centerY, radius;
 
         private TextPaint numPaint;
@@ -144,10 +142,15 @@ public class CirclesView extends View {
             return String.format("Circle [%d, %d]", centerX, centerY);
         }
 
-        public void draw(Canvas canvas, Paint paint) {
+        public void draw(Canvas canvas, boolean selected) {
             canvas.drawCircle(centerX, centerY, radius, circleBg);
-            canvas.drawCircle(centerX, centerY, radius, paint);
-            if(val > 0)  {
+            if(selected) {
+                selectedStroke.setColor(numPaint.getColor());
+                canvas.drawCircle(centerX, centerY, radius, selectedStroke);
+            } else {
+                canvas.drawCircle(centerX, centerY, radius, circleStroke);
+            }
+            if(hasValue())  {
                 String num = String.valueOf(val);
                 canvas.drawText(num, centerX, centerY+textHeight/2, numPaint);
             }
@@ -188,12 +191,13 @@ public class CirclesView extends View {
     }
 
     private void drawCircles(Canvas canvas) {
+        boolean selected;
         for(Circle c : circles) {
-            if(event != null && event.getAction() == MotionEvent.ACTION_DOWN
-                    && c.contains(event.getX(), event.getY()) && c.hasValue())
-                c.draw(canvas, selected);
-            else
-                c.draw(canvas, circleStroke);
+            selected = event != null
+                    && event.getAction() == MotionEvent.ACTION_DOWN
+                    && c.contains(event.getX(), event.getY())
+                    && c.hasValue();
+            c.draw(canvas, selected);
         }
     }
 
