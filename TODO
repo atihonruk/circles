@@ -2,7 +2,7 @@ D Circle selection "button" behaviour (down/up handling)
 D Background color
 D Counter display
 D Correct view measurements
-* Timer display
-* Full screen
-* Orientation lock
-* Vibration on incorrect choice
+D Full screen
+D Vibration on incorrect choice
+* Orientation lock during game
+* Stats

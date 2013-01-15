@@ -5,11 +5,16 @@ import android.os.Bundle;
 
 public class CirclesActivity extends Activity
 {
-    /** Called when the activity is first created. */
+
     @Override
     public void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-        setContentView(new CirclesView(this));
+        setContentView(R.layout.main);
+
+        GameContext gameContext = new GameContext(this);
+        CirclesView circlesView = (CirclesView)findViewById(R.id.circles);
+        circlesView.setInputListener(gameContext);
     }
+
 }
