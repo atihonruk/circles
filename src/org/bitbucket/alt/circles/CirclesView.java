@@ -2,8 +2,8 @@ package org.bitbucket.alt.circles;
 
 import android.content.Context;
 import android.graphics.*;
-import android.graphics.drawable.shapes.Shape;
 import android.text.TextPaint;
+import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
@@ -15,24 +15,29 @@ public class CirclesView extends View {
     private static final Typeface[] typefaces = { Typeface.SANS_SERIF, Typeface.SERIF};
     private static final int[] colors = { Color.RED, 0xff00ee00, Color.BLUE};
     private static final Random rand = new Random();
-    private static final int MAX_NUMBER = 25,
+    private static final int
             MAX_CYCLES = 2000,
             MAX_RADIUS = 50,
             MIN_RADIUS = 3;
 
-    private Paint circleBg, circleStroke,
-                    selectedStroke, status;
-
+    private Paint circleBg, circleStroke, selectedStroke;
 
     private int width, height;
     private ArrayList<Circle> circles;
     private MotionEvent event;
-    private int curVal = 1;
-    private boolean error = false;
+    private InputListener listener;
 
     public CirclesView(Context context) {
         super(context);
+        init();
+    }
 
+    public CirclesView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        init();
+    }
+
+    private void init() {
         circleBg = new Paint(Paint.ANTI_ALIAS_FLAG);
         circleBg.setColor(Color.WHITE);
         circleBg.setStyle(Paint.Style.FILL);
@@ -45,9 +50,8 @@ public class CirclesView extends View {
         selectedStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
         selectedStroke.setStyle(Paint.Style.STROKE);
         selectedStroke.setStrokeWidth(6.0f);
-
-        status = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     }
+
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -66,29 +70,16 @@ public class CirclesView extends View {
             genCircles();
 
         drawCircles(canvas);
-
-        String text;
-        if(error) {
-            status.setColor(Color.RED);
-            text = "ERROR";
-        } else {
-            status.setColor(Color.GREEN);
-            text = String.valueOf(curVal);
-        }
-        canvas.drawText(text, 10.0f, 10.0f, status);
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         switch(event.getAction()) {
             case MotionEvent.ACTION_DOWN:
-                for(Circle c : circles) {
-                    if(c.contains(event.getX(), event.getY())) {
-                        if(c.val == curVal) {
-                            curVal++;
-                            error = false;
-                        } else {
-                            error = true;
+                if(listener != null) {
+                    for(Circle c : circles) {
+                        if(c.contains(event.getX(), event.getY())) {
+                            listener.handleInput(c.val);
                         }
                     }
                 }
@@ -98,6 +89,14 @@ public class CirclesView extends View {
 
         }
         return true;
+    }
+
+    interface InputListener {
+        void handleInput(int num);
+    }
+
+    void setInputListener(InputListener listener) {
+        this.listener = listener;
     }
 
     class Circle {
@@ -227,7 +226,7 @@ public class CirclesView extends View {
                 return c1.radius - c0.radius;
             }
         });
-        List<Circle> subList = circles.subList(0, MAX_NUMBER);
+        List<Circle> subList = circles.subList(0, GameContext.MAX_NUMBER);
         Collections.shuffle(subList);
         int val = 1;
         for(Circle c : subList)
