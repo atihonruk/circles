@@ -13,30 +13,39 @@ import java.util.*;
 public class CirclesView extends View {
     private static final String TAG = CirclesView.class.getSimpleName();
     private static final Typeface[] typefaces = { Typeface.SANS_SERIF, Typeface.SERIF};
-    private static final int[] colors = { Color.RED, Color.GREEN, Color.BLUE};
+    private static final int[] colors = { Color.RED, 0xff00ee00, Color.BLUE};
     private static final Random rand = new Random();
     private static final int MAX_NUMBER = 25,
-            NUM_CIRCLES = 1000,
-            MAX_RADIUS = 50;
+            MAX_CYCLES = 2000,
+            MAX_RADIUS = 50,
+            MIN_RADIUS = 3;
 
-    private static Paint paint;
-    private static Paint selected;
+    private static Paint circleBg, circleStroke,
+                    selected, status;
 
     static {
-        paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(0);
-        paint.setColor(Color.BLACK);
+        circleBg = new Paint(Paint.ANTI_ALIAS_FLAG);
+        circleBg.setColor(Color.WHITE);
+        circleBg.setStyle(Paint.Style.FILL);
+
+        circleStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
+        circleStroke.setStyle(Paint.Style.STROKE);
+        circleStroke.setStrokeWidth(0);
+        circleStroke.setColor(Color.BLACK);
 
         selected = new Paint(Paint.ANTI_ALIAS_FLAG);
         selected.setStyle(Paint.Style.STROKE);
-        selected.setStrokeWidth(5.0f);
+        selected.setStrokeWidth(6.0f);
         selected.setColor(Color.RED);
+
+        status = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     }
 
+    private int width, height;
     private ArrayList<Circle> circles;
     private MotionEvent event;
-
+    private int curVal = 1;
+    private boolean error = false;
 
     public CirclesView(Context context) {
         super(context);
@@ -44,28 +53,51 @@ public class CirclesView extends View {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        int width = MeasureSpec.getSize(widthMeasureSpec),
-            height = MeasureSpec.getSize(heightMeasureSpec);
-        Log.d(TAG, String.format("onMeasure(%d, %d)", width, height));
+        width = MeasureSpec.getSize(widthMeasureSpec);
+        height = MeasureSpec.getSize(heightMeasureSpec);
+        Log.d(TAG, "onMeasure " + View.MeasureSpec.toString(widthMeasureSpec)
+                                + View.MeasureSpec.toString(heightMeasureSpec));
         setMeasuredDimension(width, height);
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        canvas.drawColor(Color.WHITE);
-
+        canvas.drawColor(0xffeeeeee);
         if(circles == null)
-            genCircles(canvas.getWidth(), canvas.getHeight());
+            genCircles();
 
-        drawCircles(canvas, event);
+        drawCircles(canvas);
+
+        String text;
+        if(error) {
+            status.setColor(Color.RED);
+            text = "ERROR";
+        } else {
+            status.setColor(Color.GREEN);
+            text = String.valueOf(curVal);
+        }
+        canvas.drawText(text, 10.0f, 10.0f, status);
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        if(event.getAction() == MotionEvent.ACTION_UP) {
-            this.event = event;
-            invalidate();
+        switch(event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                for(Circle c : circles) {
+                    if(c.contains(event.getX(), event.getY())) {
+                        if(c.val == curVal) {
+                            curVal++;
+                            error = false;
+                        } else {
+                            error = true;
+                        }
+                    }
+                }
+            case MotionEvent.ACTION_UP:
+                this.event = event;
+                invalidate();
+
         }
         return true;
     }
@@ -113,6 +145,7 @@ public class CirclesView extends View {
         }
 
         public void draw(Canvas canvas, Paint paint) {
+            canvas.drawCircle(centerX, centerY, radius, circleBg);
             canvas.drawCircle(centerX, centerY, radius, paint);
             if(val > 0)  {
                 String num = String.valueOf(val);
@@ -126,9 +159,9 @@ public class CirclesView extends View {
     }
 
 
-    private void genCircles(int width, int height) {
-        int x, y, minPhi, phi, numCircles = NUM_CIRCLES, val = 1;
-        circles = new ArrayList<Circle>(NUM_CIRCLES);
+    private void genCircles() {
+        int x, y, minPhi, phi, numCycles = MAX_CYCLES;
+        circles = new ArrayList<Circle>();
         do {
             minPhi = MAX_RADIUS;
             x = rand.nextInt(width);
@@ -146,20 +179,21 @@ public class CirclesView extends View {
                     break;
             }
 
-            if(minPhi > 0)
+            if(minPhi > MIN_RADIUS)
                 circles.add(new Circle(x, y, minPhi));
 
-        } while(--numCircles > 0);
+        } while(--numCycles > 0);
 
         numberCircles();
     }
 
-    private void drawCircles(Canvas canvas, MotionEvent event) {
+    private void drawCircles(Canvas canvas) {
         for(Circle c : circles) {
-            if(event != null && c.contains(event.getX(), event.getY()) && c.hasValue())
+            if(event != null && event.getAction() == MotionEvent.ACTION_DOWN
+                    && c.contains(event.getX(), event.getY()) && c.hasValue())
                 c.draw(canvas, selected);
             else
-                c.draw(canvas, paint);
+                c.draw(canvas, circleStroke);
         }
     }
 
