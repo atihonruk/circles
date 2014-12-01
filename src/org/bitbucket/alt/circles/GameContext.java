@@ -2,6 +2,7 @@ package org.bitbucket.alt.circles;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Vibrator;
 import android.widget.TextView;
@@ -11,6 +12,7 @@ import android.widget.TextView;
  */
 class GameContext implements CirclesView.InputListener {
     private static final int VIBRATO_MS = 200;
+    private static final String BEST_TIME = "BEST_TIME";
 
     static final int MAX_NUMBER = 25;
 
@@ -21,7 +23,7 @@ class GameContext implements CirclesView.InputListener {
 
     private final Activity activity;
     private final Vibrator vibrator;
-    private int gameState;
+    private int gameState = NOT_STARTED;
     private int curVal = 1;
     private long gameTime;
     private int errorCount = 0;
@@ -29,8 +31,6 @@ class GameContext implements CirclesView.InputListener {
 
     public GameContext(Activity activity) {
         this.activity = activity;
-        gameState = NOT_STARTED;
-
         vibrator = (Vibrator)activity.getSystemService(Context.VIBRATOR_SERVICE);
     }
 
@@ -57,17 +57,24 @@ class GameContext implements CirclesView.InputListener {
                     if(vibrator != null)
                         vibrator.vibrate(VIBRATO_MS);
                 }
-
-                displayStatus();
                 break;
             case FINISHED:
+                gameState = NOT_STARTED;
+                curVal = 1;
+                errorCount = 0;
+                CirclesView gameView = (CirclesView)activity.findViewById(R.id.circles);
+                gameView.reset();
+                gameView.invalidate();
                 break;
         }
+        displayStatus();
     }
 
     private void displayStatus() {
         TextView view = (TextView) activity.findViewById(R.id.status);
         switch (gameState) {
+            case NOT_STARTED:
+                view.setText(R.string.start_message);
             case IN_PROGRESS:
                 view.setTextColor(Color.WHITE);
                 view.setText("Next: " + String.valueOf(curVal));
@@ -76,13 +83,36 @@ class GameContext implements CirclesView.InputListener {
                 view.setTextColor(Color.RED);
                 break;
             case FINISHED:
+                int elapsed =  (int)gameTime/1000;
+                long best = getPreviousBest();
+                String status;
+
+                if(elapsed < best) {
+                    storeBest(elapsed);
+                    status = String.format("%d seconds",  elapsed);
+                } else {
+                    status = String.format("%d sec (best: %d sec)", elapsed, best);
+                }
+
+                if(errorCount > 0)
+                    status += String.format(", %d %s", errorCount, (errorCount == 1) ? "error" : "errors");
                 view.setTextColor(Color.WHITE);
-                view.setText(String.format("%d seconds, %s error%c",
-                        gameTime/1000,
-                        (errorCount == 0) ? "no" : String.valueOf(errorCount),
-                        (errorCount == 1) ? ' ' : 's'));
+                view.setText(status);
+
                 break;
         }
+    }
+
+    private int getPreviousBest() {
+        return activity.getPreferences(Context.MODE_PRIVATE)
+                .getInt(BEST_TIME, Integer.MAX_VALUE);
+    }
+
+    private void storeBest(int best) {
+        activity.getPreferences(Context.MODE_PRIVATE)
+                .edit()
+                .putInt(BEST_TIME, best)
+                .apply();
     }
 
 
