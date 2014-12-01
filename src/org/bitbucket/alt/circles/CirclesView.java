@@ -6,14 +6,15 @@ import android.text.TextPaint;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.SurfaceHolder;
 import android.view.View;
 
 import java.util.*;
 
-public class CirclesView extends View {
+public class CirclesView implements SurfaceHolder.Callback, View.OnTouchListener {
     private static final String TAG = CirclesView.class.getSimpleName();
     private static final Typeface[] typefaces = { Typeface.SANS_SERIF, Typeface.SERIF};
-    private static final int[] colors = { Color.RED, 0xff00ee00, Color.BLUE};
+    private static final int[] colors = { Color.RED, 0xff00dd00, Color.BLUE};
     private static final Random rand = new Random();
     private static final int
             MAX_CYCLES = 2000,
@@ -26,18 +27,10 @@ public class CirclesView extends View {
     private ArrayList<Circle> circles;
     private MotionEvent event;
     private InputListener listener;
+    private SurfaceHolder holder;
 
-    public CirclesView(Context context) {
-        super(context);
-        init();
-    }
 
-    public CirclesView(Context context, AttributeSet attrs) {
-        super(context, attrs);
-        init();
-    }
-
-    private void init() {
+    public CirclesView() {
         circleBg = new Paint(Paint.ANTI_ALIAS_FLAG);
         circleBg.setColor(Color.WHITE);
         circleBg.setStyle(Paint.Style.FILL);
@@ -50,53 +43,67 @@ public class CirclesView extends View {
         selectedStroke = new Paint(Paint.ANTI_ALIAS_FLAG);
         selectedStroke.setStyle(Paint.Style.STROKE);
         selectedStroke.setStrokeWidth(6.0f);
-    }
 
-
-    @Override
-    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        width = MeasureSpec.getSize(widthMeasureSpec);
-        height = MeasureSpec.getSize(heightMeasureSpec);
-        Log.d(TAG, "onMeasure " + View.MeasureSpec.toString(widthMeasureSpec)
-                                + View.MeasureSpec.toString(heightMeasureSpec));
-        setMeasuredDimension(width, height);
+        circles = new ArrayList<Circle>();
     }
 
     @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-        canvas.drawColor(0xffeeeeee);
-        if(circles == null)
-            genCircles();
-
-        drawCircles(canvas);
-    }
-
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        switch(event.getAction()) {
+    public boolean onTouch(View view, MotionEvent event) {
+        switch(event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 if(listener != null) {
                     for(Circle c : circles) {
                         if(c.contains(event.getX(), event.getY())) {
                             listener.handleInput(c.val);
+                            break;
                         }
                     }
                 }
             case MotionEvent.ACTION_UP:
                 this.event = event;
-                invalidate();
+                draw();
 
         }
         return true;
+    }
+
+    @Override
+    public void surfaceCreated(SurfaceHolder holder) {
+        //To change body of implemented methods use File | Settings | File Templates.
+    }
+
+    @Override
+    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
+        this.width = width;
+        this.height = height;
+        this.holder = holder;
+
+        if(circles.isEmpty())
+            genCircles();
+    }
+
+    @Override
+    public void surfaceDestroyed(SurfaceHolder holder) {
+        //To change body of implemented methods use File | Settings | File Templates.
     }
 
     interface InputListener {
         void handleInput(int num);
     }
 
+    public void draw() {
+        Canvas canvas = holder.lockCanvas();
+        canvas.drawColor(0xffeeeeee);
+        drawCircles(canvas);
+        holder.unlockCanvasAndPost(canvas);
+    }
+
     void setInputListener(InputListener listener) {
         this.listener = listener;
+    }
+
+    void reset() {
+        circles.clear();
     }
 
     class Circle {
@@ -117,7 +124,7 @@ public class CirclesView extends View {
             this.val = val;
 
             numPaint = randomTextPaint();
-            numPaint.setTextSize(radius * ((val < 10) ? 1.6f : 1.2f));
+            numPaint.setTextSize(radius * ((val < 10) ? 1.6f : 1.1f));
 
             // pre-calculate text height
             Rect r = new Rect();
@@ -143,12 +150,9 @@ public class CirclesView extends View {
 
         public void draw(Canvas canvas, boolean selected) {
             canvas.drawCircle(centerX, centerY, radius, circleBg);
-            if(selected) {
-                selectedStroke.setColor(numPaint.getColor());
-                canvas.drawCircle(centerX, centerY, radius, selectedStroke);
-            } else {
-                canvas.drawCircle(centerX, centerY, radius, circleStroke);
-            }
+            Paint stroke = selected ? selectedStroke : circleStroke;
+            stroke.setColor(hasValue() ? numPaint.getColor() : Color.BLACK);
+            canvas.drawCircle(centerX, centerY, radius, stroke);
             if(hasValue())  {
                 String num = String.valueOf(val);
                 canvas.drawText(num, centerX, centerY+textHeight/2, numPaint);
@@ -163,7 +167,6 @@ public class CirclesView extends View {
 
     private void genCircles() {
         int x, y, minPhi, phi, numCycles = MAX_CYCLES;
-        circles = new ArrayList<Circle>();
         do {
             minPhi = MAX_RADIUS;
             x = rand.nextInt(width);
